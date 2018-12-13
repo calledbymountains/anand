@@ -1,0 +1,17 @@
+syntax='proto2';
+import "protos/data.proto";
+
+package protos;
+
+message traineval{
+    required int32 numgpus=1;
+    required int32 training_epochs=2;
+    required int32 eval_after_epochs=3 [default=1];
+    optional float learning_rate=4 [default=0.001];
+    optional float momentum=5 [default=0.9];
+    required data data_info =6;
+}
+
+message Training{
+    required traineval training=1;
+}

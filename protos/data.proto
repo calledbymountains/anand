@@ -1,0 +1,21 @@
+syntax="proto2";
+
+package protos;
+
+message data_proto{
+    required string tfrecord_list_glob=1;
+    required int32 num_parallel_reads=2;
+    required string cache_dir=3;
+    required int32 batch_size=4 [default=32];
+    required int32 prefetch_buffer_size=5 [default=100];
+    required int32 map_num_parallel_calls=6 [default=100];
+    required bool shuffle=7 [default=false];
+    required int32 shuffle_buffer_size=8 [default=100];
+    required int32 read_buffer_size=9 [default=1000];
+}
+
+message data{
+    required data_proto train_data=1;
+    required data_proto val_data=2;
+}
+
