@@ -1,9 +1,10 @@
 import os
-import tensorflow as tf
-from protos import training_pb2
+import datetime
 from data import datasets
-from google.protobuf import text_format
+import logging
+import sys
 from nets import lenet
+import multiprocessing as mp
 import argparse
 
 parser = argparse.ArgumentParser(
@@ -13,7 +14,16 @@ parser.add_argument('-C', '--config', required=True)
 NETS = [lenet.LeNet] * 20
 
 
+
+
+def get_available_gpus():
+    from tensorflow.python.client import device_lib
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
 def parse_config(config_file):
+    from google.protobuf import text_format
+    from protos import training_pb2
     if not os.path.exists(config_file):
         raise ValueError(
             'The config file {} does not exist.'.format(config_file))
@@ -25,21 +35,78 @@ def parse_config(config_file):
 
     return training_config
 
-def get_next_data(iterator):
-    return iterator.get_next()
 
-def create_model(network, config)
-    if config is not training_pb2.Training:
-        raise ValueError('The proto configuration is not correct. Please check protos/training.proto to see the correct configuration format.')
+def create_input_fn(config, mode):
+    import tensorflow as tf
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        dataset = datasets.db_train(config.training.data_info.train_data)
+    else:
+        dataset = datasets.db_val(config.training.data_info.val_data)
 
-    dbtrain = datasets.db_train(config.data_info.train_data)
-    dbval = datasets.db_val(config.data_info.val_data)
-    phase = tf.get_variable('phase', shape=(), dtype=tf.bool, trainable=False)
-    data = tf.cond(phase, lambda : get_next_data(dbtrain), lambda: get_next_data(dbval))
-    net = network(data, )
+    dbiter = dataset.make_one_shot_iterator()
+    features, labels = dbiter.get_next()
+    features.set_shape([None, 28, 28, 3])
+    return features, labels
 
 
+def create_model_fn(features, labels, mode, params):
+    import tensorflow as tf
+    network = NETS[params['index']](params['config'].training.numclasses)
+    output = network.logits(features)
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.stop_gradient(labels), logits=output)
+        loss = tf.reduce_mean(loss)
+        opt = tf.train.MomentumOptimizer(learning_rate=params['config'].training.learning_rate,
+                                         momentum=params['config'].training.momentum)
+        train_op = opt.minimize(loss, global_step=tf.train.get_global_step())
+        predictions = tf.nn.softmax(logits=output)
+        accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.cast(tf.argmax(labels, axis=1), tf.int64), tf.argmax(predictions, axis=1)), tf.float32))
+        logging_hook = tf.train.LoggingTensorHook({"loss" : loss,
+                                                   "accuracy" : accuracy}, every_n_iter=params['config'].training.display_steps)
+        return tf.estimator.EstimatorSpec(mode=tf.estimator.ModeKeys.TRAIN,
+                                          loss=loss,
+                                          train_op=train_op,
+                                          training_hooks=[logging_hook],
+                                          eval_metric_ops=None)
 
+    if mode == tf.estimator.ModeKeys.EVAL:
+        loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.stop_gradient(labels),
+                                                          logits=output)
+        loss = tf.reduce_mean(loss)
+        predictions = tf.nn.softmax(logits=output)
+        accuracy = tf.reduce_mean(tf.cast(
+            tf.equal(tf.cast(tf.argmax(labels, axis=1), tf.int64), tf.argmax(predictions, axis=1)),
+            tf.float32))
+        logging_hook = tf.train.LoggingTensorHook({"loss": loss,
+                                                   "accuracy" : accuracy}, every_n_iter=params['config'].training.display_steps)
+        return tf.estimator.EstimatorSpec(mode=tf.estimator.ModeKeys.EVAL,
+                                          loss=loss,
+                                          evaluation_hooks=[logging_hook],
+                                          eval_metric_ops=None)
+
+
+def build_estimator(config, index):
+    os.environ["CUDA_VISIBLE_DEVICES"] = "{}".format(index)
+    import tensorflow as tf
+    tf.logging.set_verbosity(tf.logging.INFO)
+    train_input_fn = lambda : create_input_fn(config, tf.estimator.ModeKeys.TRAIN)
+    eval_input_fn = lambda : create_input_fn(config, tf.estimator.ModeKeys.EVAL)
+    params = {
+        'index' : index,
+        'config' : config
+    }
+    basepath = config.training.basepath
+    currenttime = datetime.datetime.now().strftime('%B-%d-%Y')
+    exp_folder = os.path.join(basepath, 'gpu-{}-{}'.format(index, currenttime))
+    os.makedirs(exp_folder, exist_ok=True)
+    sess_config = tf.ConfigProto(device_count={'GPU': index})
+    cfg = tf.estimator.RunConfig(model_dir=exp_folder,
+                                 save_checkpoints_secs=config.training.save_checkpoint_secs, session_config=sess_config)
+    estimator = tf.estimator.Estimator(create_model_fn, config=cfg, params=params)
+    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=config.training.training_steps)
+    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=config.training.eval_after_steps)
+    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+    return None
 
 
 if __name__ == "__main__":
@@ -47,3 +114,9 @@ if __name__ == "__main__":
     config_file = args.config
     training_config = parse_config(config_file)
     print(training_config)
+    gpus = range(training_config.training.numgpus)
+    pool = mp.Pool(processes=len(gpus))
+    mapargs = zip([training_config] * len(gpus), gpus)
+    pool.starmap(build_estimator, mapargs)
+    #build_estimator(training_config, 0)
+

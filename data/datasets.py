@@ -3,8 +3,6 @@ from data.preprocessing import preprocess_train, preprocess_val
 from protos import data_pb2
 
 def db_train(proto_config):
-    if not proto_config is data_pb2.data_proto:
-        raise ValueError('The proto config specified is not valid. Please see protos/data.proto to see the correct configuration.')
 
     tfrecords = tf.gfile.Glob(proto_config.tfrecord_list_glob)
     num_parallel_calls = proto_config.num_parallel_reads
@@ -13,6 +11,7 @@ def db_train(proto_config):
                                  num_parallel_reads=num_parallel_calls,
                                  buffer_size=read_buffer_size)
 
+    db = db.repeat()
     do_shuffle = proto_config.shuffle
 
     if do_shuffle:
@@ -29,15 +28,10 @@ def db_train(proto_config):
     prefetch_buffer_size = proto_config.prefetch_buffer_size
 
     db = db.prefetch(buffer_size=prefetch_buffer_size)
-
-    dbiter = db.make_initializable_iterator()
-    return dbiter
+    return db
 
 
 def db_val(proto_config):
-    if not proto_config is data_pb2.data_proto:
-        raise ValueError(
-            'The proto config specified is not valid. Please see protos/data.proto to see the correct configuration.')
 
     tfrecords = tf.gfile.Glob(proto_config.tfrecord_list_glob)
     num_parallel_calls = proto_config.num_parallel_reads
@@ -62,6 +56,4 @@ def db_val(proto_config):
     prefetch_buffer_size = proto_config.prefetch_buffer_size
 
     db = db.prefetch(buffer_size=prefetch_buffer_size)
-
-    dbiter = db.make_initializable_iterator()
-    return dbiter
+    return db
