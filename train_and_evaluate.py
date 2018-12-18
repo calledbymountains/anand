@@ -87,6 +87,7 @@ def create_model_fn(features, labels, mode, params):
 
 def build_estimator(config, index):
     os.environ["CUDA_VISIBLE_DEVICES"] = "{}".format(index)
+    print(index)
     import tensorflow as tf
     tf.logging.set_verbosity(tf.logging.INFO)
     train_input_fn = lambda : create_input_fn(config, tf.estimator.ModeKeys.TRAIN)
@@ -96,7 +97,7 @@ def build_estimator(config, index):
         'config' : config
     }
     basepath = config.training.basepath
-    currenttime = datetime.datetime.now().strftime('%B-%d-%Y')
+    currenttime = datetime.datetime.now().strftime('%B-%d-%Y-%I-%M%p')
     exp_folder = os.path.join(basepath, 'gpu-{}-{}'.format(index, currenttime))
     os.makedirs(exp_folder, exist_ok=True)
     sess_config = tf.ConfigProto(device_count={'GPU': index})
@@ -114,9 +115,9 @@ if __name__ == "__main__":
     config_file = args.config
     training_config = parse_config(config_file)
     print(training_config)
-    gpus = range(training_config.training.numgpus)
+    gpus = list(range(training_config.training.numgpus))
     pool = mp.Pool(processes=len(gpus))
     mapargs = zip([training_config] * len(gpus), gpus)
+    print(gpus)
     pool.starmap(build_estimator, mapargs)
-    #build_estimator(training_config, 0)
 
