@@ -16,7 +16,9 @@ def preprocess_train(data):
     data = parse_proto(data)
     image = tf.image.decode_image(data['image'])
     image = tf.cast(image, tf.float32)
-    image = tf.reshape(image, [data['height'], data['width'], 3])
+    height = tf.cast(data['height'], tf.int32)
+    width = tf.cast(data['width'], tf.int32)
+    image = tf.reshape(image, [height, width, 3])
     label = data['label_number']
     label = tf.one_hot(label, 10)
     label = tf.cast(label, tf.float32)
@@ -26,7 +28,9 @@ def preprocess_val(data):
     data = parse_proto(data)
     image = tf.image.decode_image(data['image'])
     image = tf.cast(image, tf.float32)
-    image = tf.reshape(image, [data['height'], data['width'], 3])
+    height = tf.cast(data['height'], tf.int32)
+    width = tf.cast(data['width'], tf.int32)
+    image = tf.reshape(image, [height, width, 3])
     label = data['label_number']
     label = tf.one_hot(label, 10)
     label = tf.cast(label, tf.float32)
