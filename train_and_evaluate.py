@@ -89,7 +89,7 @@ def build_estimator(config):
     cpu_name = mp.current_process().name
     cpu_id = int(cpu_name[cpu_name.find('-') + 1:]) - 1
     gpu_id = gpu_id_list[cpu_id]
-    os.environ["CUDA_VISIBLE_DEVICES"] = "{}".format(gpu_id)
+    os.environ["CUDA_VISIBLE_DEVICES"] = "{}".format(gpu_id - 1)
     import tensorflow as tf
     tf.logging.set_verbosity(tf.logging.INFO)
     train_input_fn = lambda : create_input_fn(config, tf.estimator.ModeKeys.TRAIN)
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     config_file = args.config
     training_config = parse_config(config_file)
     print(training_config)
-    gpu_id_list = list(range(training_config.training.numgpus))
+    gpu_id_list = list(range(1,training_config.training.numgpus+1))
     pool = mp.Pool(processes=len(gpu_id_list))
     mapargs = [training_config] * len(NETS)
     pool.map(build_estimator, mapargs)
