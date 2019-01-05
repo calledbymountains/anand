@@ -1,5 +1,11 @@
 # Documentation
 
+This code takes a set of neural networks and trains them in parallel. The meaning of training in paralle is as follows :
+Assume that there are 20 different models and 4 different GPUs.
+What this code can do is that it will train 4 out of 20 models on the  GPUs (one on each GPU). As soon as one model is trained, it will automatically load another model on that GPU. This process will be repeated until all 20 models are trained.
+
+This code is highly efficient and yields first class performance in terms of runtime speed.
+
 
 ## Requirements
 
