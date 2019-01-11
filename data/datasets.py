@@ -4,11 +4,9 @@ from protos import data_pb2
 
 def db_train(proto_config):
 
-    tfrecords = tf.gfile.Glob(proto_config.tfrecord_list_glob)
-    num_parallel_calls = proto_config.num_parallel_reads
+    tfrecords = tf.gfile.Glob(proto_config.csv_list_glob)
     read_buffer_size = proto_config.read_buffer_size
-    db = tf.data.TFRecordDataset(filenames=tfrecords,
-                                 num_parallel_reads=num_parallel_calls,
+    db = tf.data.TextLineDataset(filenames=tfrecords,
                                  buffer_size=read_buffer_size)
 
     db = db.repeat()
@@ -33,11 +31,9 @@ def db_train(proto_config):
 
 def db_val(proto_config):
 
-    tfrecords = tf.gfile.Glob(proto_config.tfrecord_list_glob)
-    num_parallel_calls = proto_config.num_parallel_reads
+    tfrecords = tf.gfile.Glob(proto_config.csv_list_glob)
     read_buffer_size = proto_config.read_buffer_size
-    db = tf.data.TFRecordDataset(filenames=tfrecords,
-                                 num_parallel_reads=num_parallel_calls,
+    db = tf.data.TextLineDataset(filenames=tfrecords,
                                  buffer_size=read_buffer_size)
 
     do_shuffle = proto_config.shuffle

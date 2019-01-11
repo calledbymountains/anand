@@ -8,7 +8,7 @@ message traineval{
     required int32 training_steps=80000;
     required int32 eval_after_steps=3 [default=10];
     optional float learning_rate=4 [default=0.001];
-    optional int32 display_steps=10 [default=10];
+    optional int32 display_steps=10 [default=1000];
     optional float momentum=5 [default=0.9];
     required data data_info =6;
     required int32 numclasses = 7;

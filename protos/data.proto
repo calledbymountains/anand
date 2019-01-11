@@ -3,8 +3,7 @@ syntax="proto2";
 package protos;
 
 message data_proto{
-    required string tfrecord_list_glob=1;
-    required int32 num_parallel_reads=2;
+    required string csv_list_glob=1;
     required string cache_dir=3;
     required int32 batch_size=4 [default=32];
     required int32 prefetch_buffer_size=5 [default=100];
